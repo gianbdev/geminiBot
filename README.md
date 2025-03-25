@@ -4,13 +4,13 @@ Este proyecto es un chatbot basado en Flask que utiliza la API de Gemini para ge
 
 📌 Requisitos
 
-Python 3.8 o superior
+* Python 3.8 o superior
 
-pip (administrador de paquetes de Python)
+* pip (administrador de paquetes de Python)
 
-Acceso a Internet
+* Acceso a Internet
 
-Clave API de Gemini
+* Clave API de Gemini
 
 🚀 Instalación y Configuración
 
@@ -66,15 +66,17 @@ geminiBot/
 
 📌 Dependencias principales
 
-Flask
+* Flask
 
-Requests
+* Requests
 
 🛠 Desactivar el entorno virtual
 
 Cuando termines de trabajar en el proyecto, puedes desactivar el entorno virtual con:
 
+```
 deactivate
+```
 
 💡 Notas:
 
