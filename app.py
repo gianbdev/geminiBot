@@ -80,14 +80,17 @@ def chat():
     if not user_message:
         return jsonify({"error": "Mensaje vacío"}), 400
 
-    # Consultar primero la base de datos
+    # 1️⃣ Primero consulta la base de datos
     respuesta_db = consultar_db(user_message)
-    
-    # Si la base de datos tiene información relevante, la devuelve
     if respuesta_db and "No encontré información" not in respuesta_db:
         return jsonify({"response": respuesta_db})
 
-    # Si no hay información en la DB, consultar a Gemini
+    # 2️⃣ Luego consulta la API externa
+    respuesta_api = consultar_api_externa(user_message)
+    if respuesta_api and "No encontré información" not in respuesta_api:
+        return jsonify({"response": respuesta_api})
+
+    # 3️⃣ Si no encuentra nada, consulta a Gemini
     response = requests.post(
         GEMINI_API_URL,
         headers={"Content-Type": "application/json"},
@@ -101,8 +104,34 @@ def chat():
             gemini_response = "Error en la respuesta del modelo."
 
         return jsonify({"response": gemini_response})
-    
+
     return jsonify({"error": "Error al conectar con Gemini"}), response.status_code
+
+# Ruta para consultar la API externa
+def consultar_api_externa(user_message):
+    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuario"
+    
+    try:
+        response = requests.get(api_url, timeout=5)  # Timeout para evitar bloqueos
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Supongamos que la API devuelve una lista de usuarios
+            if isinstance(data, list) and len(data) > 0:
+                respuesta = "Aquí tienes algunos usuarios:\n"
+                for usuario in data[:5]:  # Limitar a 5 usuarios
+                    respuesta += f"- {usuario.get('nombre', 'Sin nombre')} (Email: {usuario.get('email', 'No disponible')})\n"
+                return respuesta
+
+            return "No encontré información en la API externa."
+
+        return "Error al obtener datos de la API externa."
+    
+    except requests.RequestException as e:
+        return f"Error al conectar con la API externa: {e}"
+
+
 
 # MAIN
 if __name__ == "__main__":
