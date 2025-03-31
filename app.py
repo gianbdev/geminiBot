@@ -109,7 +109,7 @@ def chat():
 
 # Ruta para consultar la API externa
 def consultar_api_externa(user_message):
-    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuario"
+    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuarios"
     
     try:
         response = requests.get(api_url, timeout=5)  # Timeout para evitar bloqueos
