@@ -6,13 +6,33 @@
     <title>Chat con Gemini</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h2>Chat con Gemini</h2>
-        <div id="chat-box"></div>
-        <input type="text" id="user-input" placeholder="Escribe tu mensaje..." autofocus>
-        <button onclick="sendMessage()">Enviar</button>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="chat-title">
+                <i class="fas fa-robot"></i>
+                <h2>Chat con Gemini</h2>
+            </div>
+            <div class="chat-status">En línea</div>
+        </div>
+        
+        <div id="chat-box">
+            <div class="chat-welcome">
+                <p>¡Hola! Soy Gemini, tu asistente de IA. ¿En qué puedo ayudarte hoy?</p>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Escribe tu mensaje..." autofocus>
+            <button id="send-btn" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+            <button id="mic-btn">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
     </div>
 
     <script>
@@ -21,7 +41,16 @@
             if (!userInput.trim()) return;
 
             let chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML += `<p><strong>Tú:</strong> ${userInput}</p>`;
+            chatBox.innerHTML += `
+                <div class="message user-message">
+                    <div class="message-content">
+                        <div class="message-text">${userInput}</div>
+                        <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                </div>`;
+            
+            // Auto scroll to bottom
+            chatBox.scrollTop = chatBox.scrollHeight;
 
             fetch("/chat", {
                 method: "POST",
@@ -30,11 +59,34 @@
             })
             .then(response => response.json())
             .then(data => {
-                chatBox.innerHTML += `<p><strong>Gemini:</strong> ${data.response}</p>`;
+                chatBox.innerHTML += `
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <div class="message-text">${data.response}</div>
+                            <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        </div>
+                    </div>`;
                 document.getElementById("user-input").value = "";
+                chatBox.scrollTop = chatBox.scrollHeight;
             })
-            .catch(error => console.error("Error:", error));
+            .catch(error => {
+                console.error("Error:", error);
+                chatBox.innerHTML += `
+                    <div class="message error-message">
+                        <div class="message-content">
+                            <div class="message-text">Lo siento, hubo un error al procesar tu mensaje.</div>
+                        </div>
+                    </div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
         }
+
+        // Send message on Enter key
+        document.getElementById("user-input").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                sendMessage();
+            }
+        });
     </script>
 </body>
 </html>
