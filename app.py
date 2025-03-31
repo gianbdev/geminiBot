@@ -73,10 +73,11 @@ def consultar_db(user_message):
 
 # Ruta para consultar la API externa
 def consultar_api_externa(user_message):
-    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuarios"
+    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios"
 
     try:
         response = requests.get(api_url, timeout=5)
+            
         if response.status_code == 200:
             data = response.json()
             if isinstance(data, list) and len(data) > 0:
