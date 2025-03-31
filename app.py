@@ -105,7 +105,7 @@ def chat():
         return jsonify({"response": respuesta_db})
 
     # 2️⃣ Consultar API externa
-    respuesta_api = consultar_api_externa()
+    respuesta_api = consultar_api_externa(user_message)
     if "No encontré información" not in respuesta_api:
         return jsonify({"response": respuesta_api})
 
