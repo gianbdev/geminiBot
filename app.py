@@ -71,7 +71,25 @@ def consultar_db(user_message):
     conn.close()
     return respuesta
 
-# Ruta de chat que consulta la base de datos antes de usar Gemini
+# Ruta para consultar la API externa
+def consultar_api_externa(user_message):
+    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuarios"
+
+    try:
+        response = requests.get(api_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, list) and len(data) > 0:
+                return "Aquí tienes algunos usuarios:\n" + "\n".join(
+                    [f"- {u.get('nombre', 'Sin nombre')} (Email: {u.get('email', 'No disponible')})" for u in data[:5]]
+                )
+        return "No encontré información en la API externa."
+    except requests.RequestException as e:
+        app.logger.error(f"Error en API externa: {e}")
+        return "Error al conectar con la API externa."
+
+
+# Chatbot con lógica mejorada
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -80,17 +98,17 @@ def chat():
     if not user_message:
         return jsonify({"error": "Mensaje vacío"}), 400
 
-    # 1️⃣ First, query the database
+    # 1️⃣ Consultar base de datos
     respuesta_db = consultar_db(user_message)
-    if respuesta_db and "No encontré información" not in respuesta_db:
+    if "No encontré información" not in respuesta_db:
         return jsonify({"response": respuesta_db})
 
-    # 2️⃣ Then, check the external API
+    # 2️⃣ Consultar API externa
     respuesta_api = consultar_api_externa()
-    if respuesta_api and "No encontré información" not in respuesta_api:
+    if "No encontré información" not in respuesta_api:
         return jsonify({"response": respuesta_api})
 
-    # 3️⃣ Finally, fallback to Gemini API
+    # 3️⃣ Llamar a Gemini como último recurso
     response = requests.post(
         GEMINI_API_URL,
         headers={"Content-Type": "application/json"},
@@ -102,37 +120,9 @@ def chat():
             gemini_response = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         except KeyError:
             gemini_response = "Error en la respuesta del modelo."
-
         return jsonify({"response": gemini_response})
 
     return jsonify({"error": "Error al conectar con Gemini"}), response.status_code
-
-# Ruta para consultar la API externa
-@app.route("/api_externa", methods=["POST"])
-def consultar_api_externa(user_message):
-    api_url = "https://api-function-http-turism-sem.onrender.com/api/usuarios"
-
-    try:
-        response = requests.get(api_url, timeout=5)  # Timeout para evitar bloqueos
-
-        if response.status_code == 200:
-            logging.debug(f"API response: {response.status_code}, {response.text}")
-            data = response.json()
-
-            # Supongamos que la API devuelve una lista de usuarios
-            if isinstance(data, list) and len(data) > 0:
-                respuesta = "Aquí tienes algunos usuarios:\n"
-                for usuario in data[:5]:  # Limitar a 5 usuarios
-                    respuesta += f"- {usuario.get('nombre', 'Sin nombre')} (Email: {usuario.get('email', 'No disponible')})\n"
-                return jsonify({"response": respuesta})
-
-            return jsonify({"response": "No encontré información en la API externa."})
-
-        return jsonify({"error": "Error al obtener datos de la API externa."}), response.status_code
-    
-    except requests.RequestException as e:
-        logging.error(f"Error al conectar con la API externa: {e}")
-        return jsonify({"error": f"Error al conectar con la API externa: {e}"}), 500
 
 
 
