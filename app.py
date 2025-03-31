@@ -73,63 +73,78 @@ def consultar_db(user_message):
 
 # Ruta para consultar la API externa
 def consultar_api_externa(user_message):
-    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/"
+    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/67e9ef27eaba75fb074b082a"
+    
     try:
         response = requests.get(api_url, timeout=5)
         
         if response.status_code == 200:
-            data = response.json()
+            usuario = response.json()
             
-            # Verificar que data tiene los datos correctos
-            if isinstance(data, dict):  # ✅ Verifica si es un objeto JSON (no lista)
-                nombre = data.get("nombre", "Nombre no disponible").strip()
-                usuario = data.get("usuario", "Usuario no disponible")
-                email = data.get("email", "Email no disponible")
-                rol = data.get("rol", "Rol no disponible")
-
-                return f"Usuario encontrado:\n- Nombre: {nombre}\n- Usuario: {usuario}\n- Email: {email}\n- Rol: {rol}"
-
-        return "No encontré información en la API externa."
+            # Formatea la respuesta según los campos del usuario
+            return (
+                f"Información del usuario:\n"
+                f"- Nombre: {usuario.get('nombre', 'No disponible')}\n"
+                f"- Email: {usuario.get('email', 'No disponible')}\n"
+                f"- Rol: {usuario.get('rol', 'No disponible')}"
+            )
+        else:
+            return f"No pude obtener la información del usuario (Error {response.status_code})"
     
     except requests.RequestException as e:
-        app.logger.error(f"Error en API externa: {e}")
-        return "Error al conectar con la API externa."
+        app.logger.error(f"Error en API: {str(e)}")
+        return "Error al conectar con el servicio de usuarios."
 
 
 # Chatbot con lógica mejorada
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_message = data.get("message")
+    user_message = data.get("message", "").lower()  # Asegurar minúsculas y valor por defecto
 
     if not user_message:
         return jsonify({"error": "Mensaje vacío"}), 400
+
+    # Palabras clave que activan la consulta al endpoint de usuario
+    triggers_usuario = [
+        "usuario", 
+        "mis datos", 
+        "perfil", 
+        "información personal",
+        "mis datos de usuario",
+        "quién soy"
+    ]
+
+    # 0️⃣ PRIMERO verificar si pregunta por el usuario (tu endpoint específico)
+    if any(trigger in user_message for trigger in triggers_usuario):
+        respuesta_api = consultar_api_externa(user_message)
+        return jsonify({"response": respuesta_api})
 
     # 1️⃣ Consultar base de datos
     respuesta_db = consultar_db(user_message)
     if "No encontré información" not in respuesta_db:
         return jsonify({"response": respuesta_db})
 
-    # 2️⃣ Consultar API externa
-    respuesta_api = consultar_api_externa(user_message)
-    if "No encontré información" not in respuesta_api:
-        return jsonify({"response": respuesta_api})
+    # 2️⃣ Llamar a Gemini como último recurso
+    try:
+        response = requests.post(
+            GEMINI_API_URL,
+            headers={"Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": user_message}]}]},
+            timeout=10
+        )
 
-    # 3️⃣ Llamar a Gemini como último recurso
-    response = requests.post(
-        GEMINI_API_URL,
-        headers={"Content-Type": "application/json"},
-        json={"contents": [{"parts": [{"text": user_message}]}]}
-    )
+        if response.status_code == 200:
+            try:
+                gemini_response = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+                return jsonify({"response": gemini_response})
+            except KeyError:
+                return jsonify({"response": "Error al interpretar la respuesta del asistente."})
+        
+        return jsonify({"error": f"Error al conectar con Gemini (Código {response.status_code})"}), response.status_code
 
-    if response.status_code == 200:
-        try:
-            gemini_response = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-        except KeyError:
-            gemini_response = "Error en la respuesta del modelo."
-        return jsonify({"response": gemini_response})
-
-    return jsonify({"error": "Error al conectar con Gemini"}), response.status_code
+    except requests.RequestException as e:
+        return jsonify({"error": f"Error de conexión: {str(e)}"}), 500 
 
 
 
