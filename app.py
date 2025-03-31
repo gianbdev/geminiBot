@@ -110,7 +110,7 @@ def chat():
         "usuario", 
         "mis datos", 
         "perfil", 
-        "información personal",
+        "info del usuario",
         "mis datos de usuario",
         "quién soy"
     ]
