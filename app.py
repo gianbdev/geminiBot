@@ -73,59 +73,80 @@ def consultar_db(user_message):
 
 # Ruta para consultar la API externa
 def consultar_api_externa(user_message):
-    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/67e9ef27eaba75fb074b082a"
+      # Detectar si pregunta por usuarios
+    triggers_usuario = ["usuario", "mis datos", "perfil", "info del usuario", "mis datos de usuario", "quién soy"]
+    triggers_guias = ["guía", "guías", "guias", "guia", "tour", "tours", "guiatur", "guías disponibles"]
+    
+    if any(trigger in user_message.lower() for trigger in triggers_usuario):
+        api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/67e9ef27eaba75fb074b082a"
+        tipo = "usuario"
+    elif any(trigger in user_message.lower() for trigger in triggers_guias):
+        api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/guias"
+        tipo = "guias"
+    else:
+        return "No reconozco a qué servicio te refieres."
     
     try:
-        response = requests.get(api_url, timeout=5)
+        response = requests.get(api_url, timeout=10)
         
         if response.status_code == 200:
-            usuario = response.json()
+            data = response.json()
             
-            # Formatea la respuesta según los campos del usuario
-            return (
-                f"Información del usuario:\n"
-                f"- Nombre: {usuario.get('nombre', 'No disponible')}\n"
-                f"- Email: {usuario.get('email', 'No disponible')}\n"
-                f"- Rol: {usuario.get('rol', 'No disponible')}"
-            )
+            if tipo == "usuario":
+                return (
+                    f"Información del usuario:\n"
+                    f"- Nombre: {data.get('nombre', 'No disponible')}\n"
+                    f"- Email: {data.get('email', 'No disponible')}\n"
+                    f"- Rol: {data.get('rol', 'No disponible')}"
+                )
+            elif tipo == "guias":
+                if isinstance(data, list):
+                    if len(data) == 0:
+                        return "No hay guías disponibles actualmente."
+                    
+                    respuesta = "Guías disponibles:\n"
+                    for guia in data[:5]:  # Mostrar máximo 5 guías
+                        respuesta += (
+                            f"\n- Nombre: {guia.get('nombre', 'N/A')}\n"
+                            f"  Especialidad: {guia.get('especialidad', 'N/A')}\n"
+                            f"  Idiomas: {', '.join(guia.get('idiomas', []))}\n"
+                            f"  Experiencia: {guia.get('experiencia', 'N/A')} años"
+                        )
+                    if len(data) > 5:
+                        respuesta += f"\n\nHay {len(data) - 5} guías más disponibles."
+                    return respuesta
+                else:
+                    return "Formato de respuesta inesperado de la API de guías."
         else:
-            return f"No pude obtener la información del usuario (Error {response.status_code})"
+            return f"No pude obtener la información (Error {response.status_code})"
     
+    except requests.Timeout:
+        return "El servicio no respondió a tiempo. Por favor intenta nuevamente."
     except requests.RequestException as e:
         app.logger.error(f"Error en API: {str(e)}")
-        return "Error al conectar con el servicio de usuarios."
+        return f"Error al conectar con el servicio: {str(e)}"
 
 
 # Chatbot con lógica mejorada
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_message = data.get("message", "").lower()  # Asegurar minúsculas y valor por defecto
+    user_message = data.get("message", "").lower()
 
     if not user_message:
         return jsonify({"error": "Mensaje vacío"}), 400
 
-    # Palabras clave que activan la consulta al endpoint de usuario
-    triggers_usuario = [
-        "usuario", 
-        "mis datos", 
-        "perfil", 
-        "info del usuario",
-        "mis datos de usuario",
-        "quién soy"
-    ]
-
-    # 0️⃣ PRIMERO verificar si pregunta por el usuario (tu endpoint específico)
-    if any(trigger in user_message for trigger in triggers_usuario):
-        respuesta_api = consultar_api_externa(user_message)
+    # 1️⃣ Consultar API externa (ahora maneja usuarios y guías)
+    respuesta_api = consultar_api_externa(user_message)
+    if "No reconozco" not in respuesta_api:  # Si encontró un endpoint adecuado
         return jsonify({"response": respuesta_api})
 
-    # 1️⃣ Consultar base de datos
+    # 2️⃣ Consultar base de datos
     respuesta_db = consultar_db(user_message)
     if "No encontré información" not in respuesta_db:
         return jsonify({"response": respuesta_db})
 
-    # 2️⃣ Llamar a Gemini como último recurso
+    # 3️⃣ Llamar a Gemini como último recurso
     try:
         response = requests.post(
             GEMINI_API_URL,
@@ -144,8 +165,7 @@ def chat():
         return jsonify({"error": f"Error al conectar con Gemini (Código {response.status_code})"}), response.status_code
 
     except requests.RequestException as e:
-        return jsonify({"error": f"Error de conexión: {str(e)}"}), 500 
-
+        return jsonify({"error": f"Error de conexión: {str(e)}"}), 500
 
 
 # MAIN
