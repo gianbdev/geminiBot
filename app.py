@@ -1,7 +1,7 @@
 import os
 import requests
 import mysql.connector
-from flask import Flask, request, jsonify
+from flask import Flask, logging, request, jsonify
 from dotenv import load_dotenv
 from flask import render_template
 
@@ -80,17 +80,17 @@ def chat():
     if not user_message:
         return jsonify({"error": "Mensaje vacío"}), 400
 
-    # 1️⃣ Primero consulta la base de datos
+    # 1️⃣ First, query the database
     respuesta_db = consultar_db(user_message)
     if respuesta_db and "No encontré información" not in respuesta_db:
         return jsonify({"response": respuesta_db})
 
-    # 2️⃣ Luego consulta la API externa
-    respuesta_api = consultar_api_externa(user_message)
+    # 2️⃣ Then, check the external API
+    respuesta_api = consultar_api_externa()
     if respuesta_api and "No encontré información" not in respuesta_api:
         return jsonify({"response": respuesta_api})
 
-    # 3️⃣ Si no encuentra nada, consulta a Gemini
+    # 3️⃣ Finally, fallback to Gemini API
     response = requests.post(
         GEMINI_API_URL,
         headers={"Content-Type": "application/json"},
@@ -108,13 +108,15 @@ def chat():
     return jsonify({"error": "Error al conectar con Gemini"}), response.status_code
 
 # Ruta para consultar la API externa
+@app.route("/api_externa", methods=["POST"])
 def consultar_api_externa(user_message):
     api_url = "https://api-function-http-turism-sem.onrender.com/api/usuarios"
-    
+
     try:
         response = requests.get(api_url, timeout=5)  # Timeout para evitar bloqueos
 
         if response.status_code == 200:
+            logging.debug(f"API response: {response.status_code}, {response.text}")
             data = response.json()
 
             # Supongamos que la API devuelve una lista de usuarios
@@ -122,14 +124,15 @@ def consultar_api_externa(user_message):
                 respuesta = "Aquí tienes algunos usuarios:\n"
                 for usuario in data[:5]:  # Limitar a 5 usuarios
                     respuesta += f"- {usuario.get('nombre', 'Sin nombre')} (Email: {usuario.get('email', 'No disponible')})\n"
-                return respuesta
+                return jsonify({"response": respuesta})
 
-            return "No encontré información en la API externa."
+            return jsonify({"response": "No encontré información en la API externa."})
 
-        return "Error al obtener datos de la API externa."
+        return jsonify({"error": "Error al obtener datos de la API externa."}), response.status_code
     
     except requests.RequestException as e:
-        return f"Error al conectar con la API externa: {e}"
+        logging.error(f"Error al conectar con la API externa: {e}")
+        return jsonify({"error": f"Error al conectar con la API externa: {e}"}), 500
 
 
 
