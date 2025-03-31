@@ -73,18 +73,24 @@ def consultar_db(user_message):
 
 # Ruta para consultar la API externa
 def consultar_api_externa(user_message):
-    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/67e9ef27eaba75fb074b082a"
-
+    api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/"
     try:
         response = requests.get(api_url, timeout=5)
-            
+        
         if response.status_code == 200:
             data = response.json()
-            if isinstance(data, list) and len(data) > 0:
-                return "Aquí tienes algunos usuarios:\n" + "\n".join(
-                    [f"- {u.get('nombre', 'Sin nombre')} (Email: {u.get('email', 'No disponible')})" for u in data[:5]]
-                )
+            
+            # Verificar que data tiene los datos correctos
+            if isinstance(data, dict):  # ✅ Verifica si es un objeto JSON (no lista)
+                nombre = data.get("nombre", "Nombre no disponible").strip()
+                usuario = data.get("usuario", "Usuario no disponible")
+                email = data.get("email", "Email no disponible")
+                rol = data.get("rol", "Rol no disponible")
+
+                return f"Usuario encontrado:\n- Nombre: {nombre}\n- Usuario: {usuario}\n- Email: {email}\n- Rol: {rol}"
+
         return "No encontré información en la API externa."
+    
     except requests.RequestException as e:
         app.logger.error(f"Error en API externa: {e}")
         return "Error al conectar con la API externa."
