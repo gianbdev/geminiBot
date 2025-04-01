@@ -13,6 +13,7 @@ app = Flask(__name__)
 DB_CONFIG = {
     "server": os.getenv("DB_HOST"),  # Cambiado de "host" a "server" para pyodbc
     "database": os.getenv("DB_NAME"),
+    "port": os.getenv("DB_PORT"),
     "username": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),
 }
