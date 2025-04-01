@@ -31,7 +31,7 @@ def saludo():
 def get_db_connection():
     try:
         conn = pyodbc.connect(
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"DRIVER={{FreeTDS}};"
             f"SERVER={DB_CONFIG['server']};"
             f"DATABASE={DB_CONFIG['database']};"
             f"UID={DB_CONFIG['username']};"
