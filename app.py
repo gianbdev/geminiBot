@@ -36,7 +36,7 @@ def get_db_connection():
             f"DATABASE={DB_CONFIG['database']};"
             f"UID={DB_CONFIG['username']};"
             f"PWD={DB_CONFIG['password']};"
-            "TrustServerCertificate=yes"
+            "TDS_Version=8.0"
         )
         return conn
     except pyodbc.Error as err:
