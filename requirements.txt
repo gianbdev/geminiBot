@@ -1,6 +1,5 @@
 flask
 requests
 python-dotenv
-mysql-connector-python
 pyodbc>=4.0.0  # Solo si vas a conectar con SQL Server
 gunicorn

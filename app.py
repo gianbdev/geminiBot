@@ -143,60 +143,6 @@ def consultar_db(user_message):
         cursor.close()
         conn.close()
 
-# Ruta para consultar la API externa
-def consultar_api_externa(user_message):
-    triggers_usuario = ["usuario", "mis datos", "perfil", "info del usuario", "mis datos de usuario", "quién soy"]
-    triggers_guias = ["guía", "guías", "guias", "guia", "tour", "tours", "guiatur", "guías disponibles"]
-    
-    if any(trigger in user_message.lower() for trigger in triggers_usuario):
-        api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/usuarios/67e9ef27eaba75fb074b082a"
-        tipo = "usuario"
-    elif any(trigger in user_message.lower() for trigger in triggers_guias):
-        api_url = "https://api-function-hhtp-turism-sem.onrender.com/api/guias"
-        tipo = "guias"
-    else:
-        return None  # Cambiado para que no devuelva respuesta inmediata
-    
-    try:
-        response = requests.get(api_url, timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            if tipo == "usuario":
-                return (
-                    f"Información del usuario:\n"
-                    f"- Nombre: {data.get('nombre', 'No disponible')}\n"
-                    f"- Email: {data.get('email', 'No disponible')}\n"
-                    f"- Rol: {data.get('rol', 'No disponible')}"
-                )
-            elif tipo == "guias":
-                if isinstance(data, list):
-                    if len(data) == 0:
-                        return "No hay guías disponibles actualmente."
-                    
-                    respuesta = "Guías disponibles:\n"
-                    for guia in data[:5]:
-                        respuesta += (
-                            f"\n- Nombre: {guia.get('nombre', 'N/A')}\n"
-                            f"  Especialidad: {guia.get('especialidad', 'N/A')}\n"
-                            f"  Idiomas: {', '.join(guia.get('idiomas', []))}\n"
-                            f"  Experiencia: {guia.get('experiencia', 'N/A')} años"
-                        )
-                    if len(data) > 5:
-                        respuesta += f"\n\nHay {len(data) - 5} guías más disponibles."
-                    return respuesta
-                else:
-                    return "Formato de respuesta inesperado de la API de guías."
-        else:
-            return f"No pude obtener la información (Error {response.status_code})"
-    
-    except requests.Timeout:
-        return "El servicio no respondió a tiempo. Por favor intenta nuevamente."
-    except requests.RequestException as e:
-        app.logger.error(f"Error en API: {str(e)}")
-        return f"Error al conectar con el servicio: {str(e)}"
-
 # Chatbot con lógica mejorada
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -215,11 +161,6 @@ def chat():
     respuesta_db = consultar_db(user_message)
     if not respuesta_db.startswith("No encontré información"):
         return jsonify({"response": respuesta_db})
-
-    # Consultar API externa
-    respuesta_api = consultar_api_externa(user_message)
-    if respuesta_api is not None:
-        return jsonify({"response": respuesta_api})
 
     # Llamar a Gemini como último recurso
     try:
