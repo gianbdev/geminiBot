@@ -31,12 +31,11 @@ def saludo():
 def get_db_connection():
     try:
         conn = pyodbc.connect(
-            f"DRIVER={{FreeTDS}};"
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
             f"SERVER={DB_CONFIG['server']};"
             f"DATABASE={DB_CONFIG['database']};"
             f"UID={DB_CONFIG['username']};"
             f"PWD={DB_CONFIG['password']};"
-            "TDS_Version=8.0"
         )
         return conn
     except pyodbc.Error as err:
